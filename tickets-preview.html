@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Best Buys A6 Tickets Preview</title>
+
+  <!-- React and ReactDOM (development builds) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <!-- Inter font (optional) + styling -->
+  <style>
+    @import url('https://rsms.me/inter/inter.css');
+    html, * {
+      font-family: 'Inter', sans-serif;
+    }
+    body {
+      margin: 0; 
+      padding: 0;
+    }
+
+    /* Page and Ticket Styles */
+    .page {
+      width: 210mm;
+      height: 297mm;
+      padding: 4mm;
+      display: grid;
+      grid-template-columns: 97mm 97mm;
+      grid-template-rows: 140.5mm 140.5mm;
+      gap: 8mm;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+      margin-bottom: 40px; /* just to space out pages visually */
+    }
+
+    .ticket {
+      width: 97mm;
+      height: 140.5mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-sizing: border-box;
+      padding: 0;
+      overflow: hidden;
+      border: 1px solid #ccc;
+    }
+
+    .header img {
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .content {
+      flex-grow: 1;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      max-height: 90mm;
+      overflow: hidden;
+    }
+
+    .product-name {
+      font-size: clamp(20px, 2.5vw, 24px);
+      font-weight: bold;
+      text-align: center;
+      margin-top: 10px;
+      margin-bottom: 0px;
+      line-height: 1.2;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+
+    .web_code {
+      font-size: 12px;
+      text-align: center;
+      margin-top: 5px;
+      margin-bottom: 5px;
+    }
+
+    .features {
+      font-size: clamp(16px, 2vw, 18px);
+      margin-bottom: 10px;
+      line-height: 1.4;
+      text-align: left;
+      width: 100%;
+      flex-grow: 1;
+      overflow-y: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      box-sizing: border-box;
+    }
+
+    .features ul {
+      margin: 0;
+      padding: 0 0 0 16px;
+    }
+
+    .price {
+      font-size: 70px;
+      font-weight: bold;
+      color: black;
+      text-align: center;
+      margin-top: auto;
+      margin-bottom: 0;
+    }
+
+    .price sup {
+      font-size: 38px;
+      vertical-align: super;
+      margin-right: 0px;
+    }
+
+    .footer {
+      color: black;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 15px;
+      height: 10mm;
+      overflow: hidden;
+    }
+
+    .timestamp, .date-range {
+      margin: 0;
+    }
+
+    .qr-code {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      align-self: center;
+      margin-left: auto;
+    }
+
+    /* Buttons for store pagination */
+    #pagination-controls {
+      margin: 10px 0;
+    }
+    #pagination-controls button {
+      margin-right: 10px;
+      padding: 8px 16px;
+      background-color: #000;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #pagination-controls button:disabled {
+      background-color: #555;
+      cursor: not-allowed;
+    }
+    #pagination-controls button:hover:not(:disabled) {
+      background-color: #999;
+    }
+
+    /* Container for React to render */
+    #preview-root {
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Where React will attach -->
+  <div id="preview-root"></div>
+
+  <!-- React/Babel code -->
+  <script type="text/babel">
+    /**
+     * The main TicketsPreview component:
+     * 1) Listens for postMessage from the parent
+     * 2) Stores storeCodes, filteredTicketsByStore, headerImage in state
+     * 3) Renders a "page" for each group of 4 tickets
+     * 4) Has Next/Prev buttons to switch store in the list
+     */
+    function TicketsPreview() {
+      const [storeCodes, setStoreCodes] = React.useState([]);
+      const [filteredTicketsByStore, setFilteredTicketsByStore] = React.useState({});
+      const [headerImage, setHeaderImage] = React.useState('');
+      const [currentStoreIndex, setCurrentStoreIndex] = React.useState(0);
+
+      // Listen for parent -> iFrame messages
+      React.useEffect(() => {
+        window.addEventListener('message', (event) => {
+          if (event.data?.type === 'ticketsData') {
+            const data = event.data.data;
+            setStoreCodes(data.storeCodes || []);
+            setFilteredTicketsByStore(data.filteredTicketsByStore || {});
+            setHeaderImage(data.headerImage || '');
+            setCurrentStoreIndex(0);
+          }
+        });
+      }, []);
+
+      function handlePrevStore() {
+        setCurrentStoreIndex((i) => Math.max(i - 1, 0));
+      }
+
+      function handleNextStore() {
+        setCurrentStoreIndex((i) => Math.min(i + 1, storeCodes.length - 1));
+      }
+
+      if (!storeCodes.length) {
+        return <div style={{ padding: '20px' }}>No data available yet.</div>;
+      }
+
+      const currentStoreCode = storeCodes[currentStoreIndex];
+      const tickets = filteredTicketsByStore[currentStoreCode] || [];
+
+      return (
+        <div>
+          <div id="pagination-controls">
+            <button onClick={handlePrevStore} disabled={currentStoreIndex === 0}>Previous Store</button>
+            <button 
+              onClick={handleNextStore} 
+              disabled={currentStoreIndex === storeCodes.length - 1}
+            >
+              Next Store
+            </button>
+          </div>
+
+          <StoreTickets 
+            storeCode={currentStoreCode} 
+            tickets={tickets} 
+            headerImage={headerImage} 
+          />
+        </div>
+      );
+    }
+
+    /**
+     * For a single store, chunk tickets into pages of 4 (2x2),
+     * and render them as .page/.ticket divs.
+     */
+    function StoreTickets({ storeCode, tickets, headerImage }) {
+      const TICKETS_PER_PAGE = 4;
+      const pages = [];
+      for (let i = 0; i < tickets.length; i += TICKETS_PER_PAGE) {
+        pages.push(tickets.slice(i, i + TICKETS_PER_PAGE));
+      }
+
+      return (
+        <div>
+          <h3 style={{ margin: '10px 0' }}>Store: {storeCode}</h3>
+          {pages.map((pageTickets, pageIndex) => (
+            <div key={pageIndex} className="page">
+              {pageTickets.map((ticket, idx) => (
+                <div key={idx} className="ticket">
+                  <div className="header">
+                    {headerImage ? (
+                      <img src={headerImage} alt="Header" />
+                    ) : null}
+                  </div>
+                  <div className="content">
+                    <div className="product-name">{ticket.web_description}</div>
+                    <div className="web_code">
+                      {ticket.web_code}
+                      {ticket.WebAPNCode ? ` • ${ticket.WebAPNCode}` : ''}
+                    </div>
+                    <div className="features">
+                      <ul>
+                        {ticket.feature1 && <li>{ticket.feature1}</li>}
+                        {ticket.feature2 && <li>{ticket.feature2}</li>}
+                        {ticket.feature3 && <li>{ticket.feature3}</li>}
+                      </ul>
+                    </div>
+                    <div className="price">
+                      <sup>$</sup>
+                      {ticket.web_price}
+                    </div>
+                  </div>
+                  <div className="footer">
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <div className="timestamp">
+                        {ticket.storeCode} {ticket.timestamp}
+                      </div>
+                      <div className="date-range">
+                        {ticket.date_range}
+                      </div>
+                    </div>
+                    {/* Skip QR for certain store codes */}
+                    {!['AEA','MBA','MBN','VDK','APC','HKA'].includes(ticket.storeCode) && (
+                      <img className="qr-code" src={ticket.qrCodeImage} alt="QR code" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Mount the React app
+    ReactDOM.createRoot(document.getElementById('preview-root')).render(<TicketsPreview />);
+  </script>
+</body>
+</html>
